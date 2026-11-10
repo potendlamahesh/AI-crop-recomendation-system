@@ -66,14 +66,20 @@ print("\nSelected Model:", model_name)
 print("\nClassification Report:")
 print(classification_report(y_test, best_predictions))
 
-# 9. Save trained model and feature names
+# 9. Save trained model, feature names, and accuracy
+best_accuracy = max(dt_accuracy, rf_accuracy)
+
 joblib.dump(
     {
         "model": best_model,
         "features": list(X.columns),
-        "model_name": model_name
+        "model_name": model_name,
+        "accuracy": float(best_accuracy),
+        "accuracy_type": "test_split_accuracy"
     },
     "crop_model.pkl"
 )
 
+print("\nModel saved successfully as crop_model.pkl")
+print("Saved Model Accuracy:", round(best_accuracy * 100, 2), "%")
 print("\nModel saved successfully as crop_model.pkl")
