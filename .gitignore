@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Secrets and local settings
+.env
+.env.*
+.streamlit/secrets.toml
+
+# Logs and OS files
+*.log
+.DS_Store
+
+# Visitor / test data (never publish)
+prediction_history.csv
+*_backup.*
+*.bak
