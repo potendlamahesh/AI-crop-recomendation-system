@@ -1,0 +1,6 @@
+crop,N_min,N_max,P_min,P_max,K_min,K_max,temperature_min,temperature_max,humidity_min,humidity_max,ph_min,ph_max,rainfall_min,rainfall_max,source_notes
+chilli,80,120,40,70,40,70,20,30,60,80,6.0,7.0,75,100,"SOURCED (NIC/Kiran chilli package): temp 20-30C, rainfall 75-100 cm, pH 6.0-7.0, NPK 100:60:60 kg/ha (+/- spread). Humidity 60-80% = GENERAL (source says only 'warm and humid')."
+tomato,130,180,80,110,80,110,18,27,50,70,6.0,7.0,40,80,"SOURCED (Shakti Vardhak package): avg temp ~21C, NPK 160:100:100 kg/ha (+/- spread). Humidity, pH and rainfall = GENERAL agronomy ranges (not confirmed in a fetched source)."
+onion,120,170,40,60,60,90,13,28,55,70,6.0,7.5,50,80,"SOURCED (VFPCK package): NPK 150:50:75 kg/ha (+/- spread; OCR-garbled P value read as 50). Temp, humidity, pH and rainfall = GENERAL agronomy ranges."
+wheat,120,150,50,60,25,40,15,24,50,70,6.0,7.5,50,100,"SOURCED (Shakti Vardhak package): irrigated NPK ~148:59:30 kg/ha, best sowing temp ~22C. Temp range, humidity, pH and rainfall = GENERAL agronomy ranges."
+sugarcane,160,200,60,80,40,60,24,34,65,85,6.0,7.5,75,150,"SOURCED (Dhanuka package): N 160-200, P 60-80, K 40-60 kg/ha, germination temp 25-32C, growth declines at pH 5.6 and 8.0. Humidity and rainfall = GENERAL agronomy ranges."

@@ -781,6 +781,12 @@ def accuracy_stat(saved_data, model_name):
     if kind == "test_split_accuracy":
         label = "Test Split Accuracy"
         note = f"{model_name}. Measured on held-out test data, not a real-world guarantee"
+    elif kind == "cross_validation_accuracy":
+        label = "Cross-Validation Accuracy"
+        note = (
+            f"{model_name}. 5-fold cross-validation. Some crops use range-based "
+            "data, so real-world accuracy is lower"
+        )
     else:
         label = "Model Accuracy"
         note = f"{model_name}. Saved with the model, evaluation type not recorded"
@@ -843,7 +849,7 @@ def build_compact_history(history):
                 number(record[column])
                 for column in ("Nitrogen", "Phosphorus", "Potassium", "Soil_pH")
             ),
-            "Weather: °C · % · mm": " · ".join(
+            "Weather: °C · % · cm": " · ".join(
                 number(record[column])
                 for column in ("Temperature", "Humidity", "Rainfall")
             ),
@@ -928,7 +934,7 @@ def stop_with_error(message, detail=None):
 
 
 if not os.path.exists(MODEL_PATH):
-    stop_with_error("Trained model file (crop_model.pkl) was not found. Run train_model.py first.")
+    stop_with_error("Trained model file (crop_model.pkl) was not found. Run train_model_v2.py first.")
 
 if not os.path.exists(DATA_PATH):
     stop_with_error("Dataset file (Crop_recommendation.csv) was not found.")
@@ -992,6 +998,25 @@ crop_category_count = (
     df["label"].nunique() if "label" in df.columns else len(model.classes_)
 )
 
+# Crops whose training rows were generated from documented agronomic ranges
+# (not field measurements). Read from the model file; empty for older model files.
+crop_data_source = saved_data.get("crop_data_source")
+
+if not isinstance(crop_data_source, dict):
+    crop_data_source = {}
+
+range_based_crops = sorted(
+    str(crop).lower() for crop, kind in crop_data_source.items() if kind != "dataset"
+)
+
+range_based_rows = (
+    int(df["label"].astype(str).str.lower().isin(range_based_crops).sum())
+    if "label" in df.columns and range_based_crops
+    else 0
+)
+
+range_based_names = ", ".join(crop.title() for crop in range_based_crops)
+
 
 # ==========================================
 # 6. DASHBOARD HOME
@@ -1052,7 +1077,10 @@ if page == "Dashboard":
                 "icon": "database",
                 "label": "Dataset Records",
                 "value": f"{len(df):,}",
-                "note": "Labelled soil and weather samples",
+                "note": (
+                    "Labelled soil and weather samples"
+                    + (f". Includes {range_based_rows:,} range-based rows" if range_based_rows else "")
+                ),
             },
             {
                 "icon": "layers",
@@ -1180,10 +1208,10 @@ elif page == "Crop Prediction":
                     N = st.number_input(
                         "Nitrogen (N)",
                         min_value=0.0,
-                        max_value=150.0,
+                        max_value=200.0,
                         value=50.0,
                         step=1.0,
-                        help="Nitrogen content of the soil. Accepted range: 0 - 150.",
+                        help="Nitrogen content of the soil. Accepted range: 0 - 200.",
                     )
 
                 with sub2:
@@ -1256,12 +1284,16 @@ elif page == "Crop Prediction":
                     )
 
                 rainfall = st.number_input(
-                    "Rainfall (mm)",
+                    "Rainfall (cm)",
                     min_value=0.0,
                     max_value=500.0,
                     value=100.0,
                     step=5.0,
-                    help="Rainfall in millimetres. Accepted range: 0 - 500.",
+                    help=(
+                        "Rainfall in centimetres, on the same scale as the training "
+                        "data (for example rice about 180 - 300, chickpea about 65 - 95). "
+                        "Accepted range: 0 - 500."
+                    ),
                 )
 
         st.write("")
@@ -1339,7 +1371,7 @@ elif page == "Crop Prediction":
                     "temperature": (10, 40, "\u00b0C"),
                     "humidity": (20, 100, "%"),
                     "ph": (4, 9, ""),
-                    "rainfall": (20, 300, " mm"),
+                    "rainfall": (20, 300, " cm"),
                 }
 
                 for feature, (minimum, maximum, unit) in reliability_checks.items():
@@ -1395,6 +1427,22 @@ elif page == "Crop Prediction":
 
                     recommendation_cards(top_crops, top_scores)
 
+                    shown_range_based = [
+                        str(crop).title()
+                        for crop in top_crops
+                        if str(crop).lower() in range_based_crops
+                    ]
+
+                    if shown_range_based:
+                        callout(
+                            "info",
+                            f"{', '.join(shown_range_based)} "
+                            "is based on documented agronomic ranges, not field "
+                            "measurements. Treat its score as a guide and check "
+                            "with local agricultural advice.",
+                            "info",
+                        )
+
                     # Crop recommendation validation
                     section_heading(
                         "Crop recommendation validation",
@@ -1408,7 +1456,7 @@ elif page == "Crop Prediction":
                         "temperature": "Temperature (\u00b0C)",
                         "humidity": "Humidity (%)",
                         "ph": "Soil pH",
-                        "rainfall": "Rainfall (mm)",
+                        "rainfall": "Rainfall (cm)",
                     }
 
                     for position, crop in enumerate(top_crops):
@@ -1631,7 +1679,10 @@ elif page == "Model Insights":
                 "icon": "database",
                 "label": "Dataset Records",
                 "value": f"{len(df):,}",
-                "note": "Rows in Crop_recommendation.csv",
+                "note": (
+                    "Rows in Crop_recommendation.csv"
+                    + (f". Includes {range_based_rows:,} range-based rows" if range_based_rows else "")
+                ),
             },
             {
                 "icon": "layers",
@@ -1793,6 +1844,13 @@ elif page == "Model Insights":
 
             show_chart(fig)
 
+            if range_based_crops:
+                st.caption(
+                    f"Range-based crops ({range_based_names}) were generated from "
+                    "documented agronomic ranges, not measured in the field. "
+                    "The other crops come from the original dataset."
+                )
+
     # Dataset statistics
 
     section_heading(
@@ -1902,7 +1960,7 @@ elif page == "Prediction History":
             "Temperature": "Temp °C",
             "Humidity": "Humidity %",
             "Soil_pH": "Soil pH",
-            "Rainfall": "Rain mm",
+            "Rainfall": "Rain cm",
             "Top_1_Crop": "Top 1 crop",
             "Top_1_Score": "Top 1 %",
             "Top_2_Crop": "Top 2 crop",

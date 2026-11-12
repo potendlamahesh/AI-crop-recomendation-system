@@ -32,12 +32,18 @@ Python, Streamlit, Scikit-learn, Pandas, NumPy, Plotly, Joblib, Git and GitHub, 
 
 | Item | Value |
 |---|---|
-| Records | 2,200 |
+| Records | 2,700 (2,200 from the dataset + 500 range-based) |
 | Columns | 8 (7 inputs + crop label) |
-| Crops | 22 |
+| Crops | 27 (22 from the dataset + 5 range-based) |
 | Records per crop | 100 |
 
-Inputs: Nitrogen (N), Phosphorus (P), Potassium (K), temperature, humidity, soil pH, rainfall.
+Inputs: Nitrogen (N), Phosphorus (P), Potassium (K), temperature, humidity, soil pH, rainfall (in cm, the scale used by the dataset).
+
+### Range-based crops
+
+Chilli, tomato, onion, wheat and sugarcane are **not in the original dataset**. Their 100 rows each are generated from documented agronomic ranges (fertilizer doses, temperature, rainfall and pH from public crop guides, plus general agronomy ranges where a guide gave no number). They are estimates, not field measurements. The ranges, and which values are sourced or general, are in `extra_crop_ranges.csv`. The app tells the user when a recommended crop is range-based.
+
+To add another crop, add one row to `extra_crop_ranges.csv` and run `python train_model_v2.py`.
 
 ## Machine learning algorithm
 
@@ -45,12 +51,20 @@ A **Random Forest classifier** (Scikit-learn). It was chosen after comparing it 
 
 ## Model evaluation
 
-| Model | Test-split accuracy |
-|---|---|
-| Decision Tree | 97.95% |
-| Random Forest (used) | 99.55% |
+Measured with 5-fold cross-validation on all 27 crops (`train_model_v2.py`):
 
-**Important:** this is accuracy on a held-out part of the same dataset. It is **not** a guarantee that a recommendation will work on a real farm. The dataset is clean and balanced, and real fields are messier.
+| Model | Accuracy | Top-3 accuracy | With small input noise (0.10 std) | With larger input noise (0.25 std) |
+|---|---|---|---|---|
+| Random Forest | 99.59% | 100% | 96.5% | 82.6% |
+| Random Forest, noise-augmented (used) | 99.44% | 100% | 98.7% | 89.1% |
+
+On the 22 dataset crops alone, the model scores 99.3% in cross-validation. The 5 range-based crops score 100%, but that number is optimistic because their data is generated.
+
+Training with added noise keeps clean accuracy almost unchanged and makes the model much steadier when measurements are imprecise, as field readings are.
+
+Earlier comparison on the 22 original crops (single test split): Decision Tree 97.95%, Random Forest 99.55%.
+
+**Important:** these scores come from the same dataset the model learned from. It is **not** a guarantee that a recommendation will work on a real farm. The dataset is clean and balanced, and real fields are messier.
 
 The app reads the accuracy from the saved model file (`crop_model.pkl`). If the file has no accuracy saved, the app shows "Not available". It never invents a number.
 
@@ -102,7 +116,7 @@ The app opens at http://localhost:8501.
 To retrain the model (this overwrites `crop_model.pkl`, so keep a copy first):
 
 ```bash
-python train_model.py
+python train_model_v2.py
 ```
 
 ## Project structure
@@ -110,9 +124,12 @@ python train_model.py
 ```text
 .
 ├── predict.py                # Streamlit app (main file)
-├── train_model.py            # Trains and saves the model
+├── train_model_v2.py         # Trains and saves the 27-crop model
+├── train_model.py            # Original 22-crop training script
+├── extra_crop_ranges.csv     # Agronomic ranges for the range-based crops
 ├── crop_model.pkl            # Saved model + metadata
-├── Crop_recommendation.csv   # Training dataset
+├── model_report.json         # Metrics saved with the model
+├── Crop_recommendation.csv   # Training dataset (2,200 original + 500 range-based rows)
 ├── requirements.txt          # Pinned packages
 ├── .streamlit/config.toml    # Green and white theme
 ├── .gitignore
@@ -136,9 +153,10 @@ _Add screenshots here (Dashboard, Crop Prediction, Model Insights, Prediction Hi
 ## Limitations
 
 - The model learns from one dataset. It does not know your local soil, season, water supply, market prices or pests.
-- The 99.55% score is a test-split score, not real-world accuracy.
+- The accuracy scores are cross-validation scores on this dataset, not real-world accuracy.
 - The scores are model outputs. They are not calibrated probabilities.
-- Only 22 crops are supported.
+- 27 crops are supported. Five of them (chilli, tomato, onion, wheat, sugarcane) use range-based data, not field measurements.
+- Out-of-range inputs can still get a confident score. Read the input warnings.
 - Prediction history is lost when the session ends.
 
 ## Future improvements
